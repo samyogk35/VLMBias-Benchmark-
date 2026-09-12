@@ -65,5 +65,12 @@ Full lock: `environment.lock.txt` (`pip freeze`).
 | `experiments/eval/object_hallucination_vqa_llava.py` argparse defaults | 1 | 0.1 | 500 | 1.0 | 1 | None |
 | `experiments/cd_scripts/llava1.5_pope.bash` | 1 | 0.2 | 500 | 1.0 | 1 | None |
 
-The EnAR (CVPR 2026) setting used to produce the 16.92 -> 19.18 figure has **not** yet been confirmed;
-`configs/smoke_optical.yaml` follows the run script (1 / 0.2 / 500) until it is.
+The EnAR (CVPR 2026) paper does **not** publish its VCD hyperparameters (only "follow the configuration of
+VCD"), and its code release omits the LLaVA/VCD comparison code — see `docs/enar_reproduction_notes.md`.
+`configs/smoke_optical.yaml` follows the run script (1 / 0.2 / 500); α/β are treated as a sensitivity axis.
+EnAR's 16.92 / 19.18 figures are over 928 rows (one unspecified resolution x Q1+Q2), not the full 2,784.
+
+| EnAR reference | Value |
+|---|---|
+| Paper | https://openaccess.thecvf.com/content/CVPR2026/html/Liang_Envision_Attend_Then_Respond_Counterfactual_Hallucination_Mitigation_in_Large_Vision-Language_CVPR_2026_paper.html |
+| Code | https://github.com/Lyxxx1211/CVPR2026-EnAR @ `815f44fc8577e6f67a4f815a357b481179d5fa70` (no VCD/LLaVA code) |
