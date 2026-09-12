@@ -12,7 +12,7 @@ data/hf/
 *.arrow
 
 # --- experiment outputs (raw JSONL + tables are regenerated; keep only tracked summaries in figures/) ---
-outputs/
+outputs/*
 !outputs/.gitkeep
 !outputs/README.md
 *.jsonl
