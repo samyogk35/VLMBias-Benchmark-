@@ -1,0 +1,12 @@
+# Pinned environment for the VCD grounding audit.
+# Baseline follows the official VCD requirements (third_party/VCD/requirements.txt):
+# PyTorch 2.0.1 + torchvision 0.15.2 (CUDA 11.8 wheels) + transformers 4.31.0.
+# Build with:  bash scripts/setup_env.sh
+name: vcd
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+      - -r requirements.txt

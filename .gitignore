@@ -1,0 +1,41 @@
+# --- model weights, datasets, caches (never commit) ---
+checkpoints/
+weights/
+*.bin
+*.safetensors
+*.pth
+*.ckpt
+data/raw/
+data/images/
+data/hf/
+*.parquet
+*.arrow
+
+# --- experiment outputs (raw JSONL + tables are regenerated; keep only tracked summaries in figures/) ---
+outputs/
+!outputs/.gitkeep
+!outputs/README.md
+*.jsonl
+!data/manifests/*.jsonl
+logs/
+wandb/
+
+# --- third-party clones are recorded by SHA in VERSIONS.md, not vendored ---
+third_party/*
+!third_party/.gitkeep
+
+# --- python / env ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+
+# --- editor / OS ---
+.vscode/
+.idea/
+.DS_Store
+*.swp

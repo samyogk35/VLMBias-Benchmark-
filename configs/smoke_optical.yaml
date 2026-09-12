@@ -1,0 +1,22 @@
+# Smoke-test configuration: baseline (regular sampling) vs. full VCD on optical-illusion pairs.
+# NOT a finding. Used only to prove the pipeline end-to-end.
+model_path: liuhaotian/llava-v1.5-7b
+model_revision: 4481d270cc22fd5c4d1bb5df129622006ccd9234
+dataset_revision: 3761f9fd7163577534a7816c8bc1004035f2e2a0
+conv_mode: llava_v1
+manifest: data/manifests/optical_pairs_v0.1.jsonl
+max_new_tokens: 16
+# Generation parameters. Sampling values follow the official VCD LLaVA eval script
+# (third_party/VCD/experiments/eval/object_hallucination_vqa_llava.py): temperature=1.0, top_p=1, top_k=None.
+sampling:
+  temperature: 1.0
+  top_p: 1.0
+  top_k: null
+# VCD hyperparameters. The VCD repo's run script (cd_scripts/llava1.5_pope.bash) uses
+# cd_alpha=1, cd_beta=0.2, noise_step=500; the code defaults are cd_alpha=0.5, cd_beta=0.1.
+# We follow the run script until the EnAR setting is confirmed.
+vcd:
+  cd_alpha: 1.0
+  cd_beta: 0.2
+  noise_step: 500
+seeds: [42, 43, 44]
