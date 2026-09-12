@@ -1,4 +1,3 @@
-"""Manifest integrity checks (SPEC §12 data validation)."""
 import json
 import os
 
@@ -19,8 +18,8 @@ def rows():
 
 def test_required_fields(rows):
     for r in rows:
-        missing = [k for k in REQUIRED if k not in r]
-        assert not missing, (r.get("pair_id"), missing)
+        for k in REQUIRED:
+            assert k in r, (r.get("pair_id"), k)
 
 
 def test_pair_ids_unique(rows):
@@ -28,18 +27,13 @@ def test_pair_ids_unique(rows):
     assert len(ids) == len(set(ids))
 
 
-def test_targets_differ_and_are_yes_no(rows):
+def test_targets_differ(rows):
     for r in rows:
-        assert r["canonical_gt"] != r["counterfactual_gt"], r["pair_id"]
-        assert {r["canonical_gt"], r["counterfactual_gt"]} == {"Yes", "No"}
+        assert {r["canonical_gt"], r["counterfactual_gt"]} == {"Yes", "No"}, r["pair_id"]
+        assert r["canonical_path"] != r["counterfactual_path"]
 
 
-def test_members_are_distinct_images(rows):
-    for r in rows:
-        assert r["canonical_path"] != r["counterfactual_path"], r["pair_id"]
-
-
-def test_same_template_shares_canonical(rows):
+def test_one_canonical_per_template(rows):
     by = {}
     for r in rows:
         by.setdefault(r["template_id"], set()).add(r["canonical_path"])
@@ -47,20 +41,19 @@ def test_same_template_shares_canonical(rows):
         assert len(s) == 1, (t, s)
 
 
-def test_no_duplicate_resolution_or_prompt_variants(rows):
+def test_single_resolution_and_prompt(rows):
     assert {r["resolution"] for r in rows} == {768}
     assert {r["question_form"] for r in rows} == {"Q1"}
 
 
-def test_at_least_10_pairs_and_smoke_subset(rows):
+def test_smoke_subset(rows):
     assert len(rows) >= 10
     smoke = [r for r in rows if r["smoke_subset"]]
     assert 10 <= len(smoke) <= 25
-    # one smoke pair per template
     assert len({r["template_id"] for r in smoke}) == len(smoke)
 
 
-def test_generator_params_consistent(rows):
+def test_generator_params(rows):
     for r in rows:
         gp = r["generator_params"]
         assert gp["canonical_difference"] == 0.0
@@ -69,9 +62,10 @@ def test_generator_params_consistent(rows):
 
 
 @pytest.mark.skipif(not os.path.isdir(os.path.join(ROOT, "data", "images", "optical")), reason="images not exported")
-def test_paths_resolve_and_heights_match(rows):
+def test_images_exist_and_heights_match(rows):
     from PIL import Image
     for r in rows:
-        a = os.path.join(ROOT, r["canonical_path"]); b = os.path.join(ROOT, r["counterfactual_path"])
+        a = os.path.join(ROOT, r["canonical_path"])
+        b = os.path.join(ROOT, r["counterfactual_path"])
         assert os.path.exists(a) and os.path.exists(b), r["pair_id"]
         assert Image.open(a).size[1] == Image.open(b).size[1] == r["resolution"]

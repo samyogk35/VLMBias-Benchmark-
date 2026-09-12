@@ -1,11 +1,11 @@
-# Smoke-test results (NOT a finding)
+# Smoke test results (not a finding)
 
-Source: `outputs/smoke_optical_22pairs/records.jsonl` — 308 records, 22 pairs, seeds [0, 42, 43, 44], config_hash `8275f879f8cf`, model rev `4481d270`.
+Source: outputs/smoke_optical_22pairs/records.jsonl, 308 records, 22 pairs, seeds [0, 42, 43, 44], config_hash 8275f879f8cf, model rev 4481d270
 
-Optical-illusion pairs (Q1, 768 px). Canonical GT = Yes (genuinely equal), counterfactual GT = No.
-Invalid/ambiguous parses are counted as not-correct and reported separately (any_invalid_pair_rate; record-level invalid counts in the parser audit).
+Optical illusion pairs, Q1, 768px. Canonical GT = Yes (really equal), counterfactual GT = No.
+Invalid/ambiguous parses count as wrong here and are also listed in any_invalid_pair_rate.
 
-## By condition (pooled over seeds)
+## by condition (all seeds pooled)
 
 | condition   |   pairs |   pair_runs |   canonical_acc |   counterfactual_acc |   balanced_acc |   pair_success |   cf_bias_rate |   response_change_rate |   any_invalid_pair_rate |
 |:------------|--------:|------------:|----------------:|---------------------:|---------------:|---------------:|---------------:|-----------------------:|------------------------:|
@@ -13,7 +13,7 @@ Invalid/ambiguous parses are counted as not-correct and reported separately (any
 | regular     |      22 |          66 |           0.470 |                0.621 |          0.545 |          0.258 |          0.379 |                  0.576 |                   0.000 |
 | vcd         |      22 |          66 |           0.470 |                0.636 |          0.553 |          0.273 |          0.364 |                  0.561 |                   0.000 |
 
-## By condition and seed
+## by condition and seed
 
 | condition   |   seed |   pairs |   pair_runs |   canonical_acc |   counterfactual_acc |   balanced_acc |   pair_success |   cf_bias_rate |   response_change_rate |   any_invalid_pair_rate |
 |:------------|-------:|--------:|------------:|----------------:|---------------------:|---------------:|---------------:|---------------:|-----------------------:|------------------------:|
@@ -25,7 +25,7 @@ Invalid/ambiguous parses are counted as not-correct and reported separately (any
 | vcd         |     43 |      22 |          22 |           0.455 |                0.545 |          0.500 |          0.273 |          0.455 |                  0.455 |                   0.000 |
 | vcd         |     44 |      22 |          22 |           0.409 |                0.727 |          0.568 |          0.227 |          0.273 |                  0.682 |                   0.000 |
 
-## By sub-domain (pooled over seeds)
+## by illusion type (all seeds pooled)
 
 | condition   | sub_domain         |   pairs |   canonical_acc |   counterfactual_acc |   pair_success |
 |:------------|:-------------------|--------:|----------------:|---------------------:|---------------:|
@@ -48,7 +48,7 @@ Invalid/ambiguous parses are counted as not-correct and reported separately (any
 | vcd         | VerticalHorizontal |       2 |           0.500 |                0.667 |          0.333 |
 | vcd         | Zollner            |       4 |           0.833 |                0.417 |          0.333 |
 
-## Transitions regular -> vcd (same pair, same seed)
+## regular -> vcd, same pair and seed
 
 | metric | count |
 |---|---:|
@@ -61,7 +61,7 @@ Invalid/ambiguous parses are counted as not-correct and reported separately (any
 | pair_regression | 0 |
 | tradeoff_only | 0 |
 
-## Transitions greedy -> vcd (greedy has a single run; compared against each vcd seed)
+## greedy -> vcd (greedy is one run, compared against every vcd seed)
 
 | metric | count |
 |---|---:|
@@ -74,7 +74,7 @@ Invalid/ambiguous parses are counted as not-correct and reported separately (any
 | pair_regression | 0 |
 | tradeoff_only | 8 |
 
-## Raw answer distribution
+## answer counts
 
 |                               |   No |   Yes |
 |:------------------------------|-----:|------:|
@@ -85,7 +85,7 @@ Invalid/ambiguous parses are counted as not-correct and reported separately (any
 | ('vcd', 'canonical')          |   35 |    31 |
 | ('vcd', 'counterfactual')     |   42 |    24 |
 
-## Throughput
+## time per generation (ms)
 
 | condition   |   count |   mean |   median |
 |:------------|--------:|-------:|---------:|

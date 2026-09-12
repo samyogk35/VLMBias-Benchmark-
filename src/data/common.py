@@ -1,5 +1,4 @@
-"""Shared helpers for locating the pinned VLMBias snapshot."""
-from __future__ import annotations
+# helpers for reading the VLMBias parquet snapshot out of the HF cache
 
 import glob
 import os
@@ -14,23 +13,23 @@ META_COLS = ["ID", "image_path", "topic", "sub_topic", "prompt", "ground_truth",
              "with_title", "type_of_question", "pixel", "metadata"]
 
 
-def snapshot_dir() -> str:
+def snapshot_dir():
     hf_home = os.environ.get("HF_HOME", os.path.expanduser("~/.cache/huggingface"))
-    d = os.path.join(hf_home, "hub", f"datasets--{DATASET_REPO.replace('/', '--')}", "snapshots", DATASET_REVISION)
+    d = os.path.join(hf_home, "hub", "datasets--" + DATASET_REPO.replace("/", "--"), "snapshots", DATASET_REVISION)
     if not os.path.isdir(d):
-        raise FileNotFoundError(f"dataset snapshot not found: {d}. Run scripts/download_assets.py first.")
+        raise FileNotFoundError("dataset snapshot not found: %s (run scripts/download_assets.py)" % d)
     return d
 
 
-def split_files(split: str):
-    files = sorted(glob.glob(os.path.join(snapshot_dir(), "data", f"{split}-*.parquet")))
+def split_files(split):
+    files = sorted(glob.glob(os.path.join(snapshot_dir(), "data", split + "-*.parquet")))
     if not files:
-        raise FileNotFoundError(f"no parquet files for split {split!r}")
+        raise FileNotFoundError("no parquet files for split " + split)
     return files
 
 
-def load_split_metadata(split: str) -> pd.DataFrame:
-    """Load a split without decoding image bytes."""
+def load_split_metadata(split):
+    # everything except the image bytes
     frames = []
     for f in split_files(split):
         names = pq.read_schema(f).names
@@ -41,8 +40,9 @@ def load_split_metadata(split: str) -> pd.DataFrame:
     return df
 
 
-def iter_images(split: str, wanted_ids: set):
-    """Yield (ID, PIL.Image) for rows whose ID is in wanted_ids, flattened onto white RGB."""
+def iter_images(split, wanted_ids):
+    # yields (ID, PIL image) for the requested IDs. the pngs are RGBA with a transparent
+    # background, so paste onto white, otherwise convert("RGB") gives a black background
     import io
     from PIL import Image
     for f in split_files(split):

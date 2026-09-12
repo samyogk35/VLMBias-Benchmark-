@@ -1,8 +1,8 @@
-# VLMBias inventory (`main` split, revision `3761f9fd7163577534a7816c8bc1004035f2e2a0`)
+# VLMBias inventory (main split, revision 3761f9fd7163577534a7816c8bc1004035f2e2a0)
 
-Total rows: **2784**
+Total rows: 2784
 
-## Rows by topic, question form, and resolution
+## rows by topic / question / resolution
 
 |                            |   384 |   768 |   1152 |
 |:---------------------------|------:|------:|-------:|
@@ -21,9 +21,9 @@ Total rows: **2784**
 | ('Patterned Grid', 'Q1')   |    56 |    56 |     56 |
 | ('Patterned Grid', 'Q2')   |    56 |    56 |     56 |
 
-## Unique images and underlying cases per topic
+## distinct images and cases per topic
 
-| topic | rows | unique image files | unique cases (px-collapsed) | rows per case |
+| topic | rows | image files | cases (resolutions collapsed) | rows per case |
 |---|---:|---:|---:|---:|
 | Animals | 546 | 273 | 91 | 6.0 |
 | Chess Pieces | 288 | 144 | 48 | 6.0 |
@@ -32,12 +32,12 @@ Total rows: **2784**
 | Logos | 414 | 207 | 69 | 6.0 |
 | Optical Illusion | 792 | 396 | 132 | 6.0 |
 | Patterned Grid | 336 | 168 | 56 | 6.0 |
-| **all** | 2784 | 1392 | 464 | 6.0 |
+| all | 2784 | 1392 | 464 | 6.0 |
 
-Each underlying case appears at 3 resolutions (384/768/1152) x 2 prompt forms (Q1/Q2) = 6 rows.
-Inferential analyses must use one prompt and one resolution per case (SPEC §5).
+Every case shows up 6 times: 3 resolutions x 2 prompt wordings (Q1/Q2).
+So the 2784 rows are really 464 cases, and any statistics need to pick one resolution and one prompt.
 
-## Optical illusion sub-topics (ground truth x expected bias)
+## optical illusions: ground truth vs expected bias
 
 | sub_topic                    |   ('No', 'Yes') |   ('Yes', 'No') |
 |:-----------------------------|----------------:|----------------:|
@@ -48,10 +48,10 @@ Inferential analyses must use one prompt and one resolution per case (SPEC §5).
 | Vertical-Horizontal illusion |              36 |              36 |
 | Zöllner illusion             |              72 |              72 |
 
-## Other splits
+## other splits
 
-- `identification`: 1392 rows, topics: Animals, Chess Pieces, Flags, Game Boards, Logos, Optical Illusion, Patterned Grid
-- `withtitle`: 2784 rows, topics: Animals, Chess Pieces, Flags, Game Boards, Logos, Optical Illusion, Patterned Grid
-- `original`: 458 rows, topics: Animals, Chess Pieces, Flags, Game Boards, Logos, Optical Illusion
-- `remove_background_q1q2`: 2784 rows, topics: Animals, Chess Pieces, Flags, Game Boards, Logos, Optical Illusions, Patterned Grid
-- `remove_background_q3`: 1392 rows, topics: Animals, Chess Pieces, Flags, Game Boards, Logos, Optical Illusions, Patterned Grid
+- identification: 1392 rows, topics: Animals, Chess Pieces, Flags, Game Boards, Logos, Optical Illusion, Patterned Grid
+- withtitle: 2784 rows, topics: Animals, Chess Pieces, Flags, Game Boards, Logos, Optical Illusion, Patterned Grid
+- original: 458 rows, topics: Animals, Chess Pieces, Flags, Game Boards, Logos, Optical Illusion
+- remove_background_q1q2: 2784 rows, topics: Animals, Chess Pieces, Flags, Game Boards, Logos, Optical Illusions, Patterned Grid
+- remove_background_q3: 1392 rows, topics: Animals, Chess Pieces, Flags, Game Boards, Logos, Optical Illusions, Patterned Grid

@@ -1,23 +1,18 @@
-"""Run LLaVA-1.5 over a pair manifest under one or more decoding conditions.
-
-Writes one append-only JSONL record per (pair, image_variant, condition, seed) following the
-SPEC §7 output contract, and resumes by skipping run_ids already present in the output file.
-
-Example (single counterfactual image, plain LLaVA):
-  python src/eval/run_inference.py --config configs/smoke_optical.yaml --run-name step5_plain \
-      --conditions greedy --variants counterfactual --limit-pairs 1
-"""
-from __future__ import annotations
+# Run LLaVA over the pair manifest and write one jsonl line per generation.
+# Re-running with the same run name skips what's already done.
+#
+#   python src/eval/run_inference.py --config configs/smoke_optical.yaml --run-name test \
+#       --conditions greedy --variants counterfactual --limit-pairs 1
 
 import argparse
 import hashlib
 import json
-import zlib
 import os
 import platform
 import subprocess
 import sys
 import time
+import zlib
 from datetime import datetime, timezone
 
 import yaml
@@ -25,20 +20,21 @@ from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, ROOT)
-from src.eval.parse_answer import parse_answer, score  # noqa: E402
+from src.eval.parse_answer import parse_answer, score
 
 
-def git_sha() -> str:
+def git_sha():
     try:
-        return subprocess.check_output(["git", "-C", ROOT, "rev-parse", "--short", "HEAD"], text=True).strip()
+        return subprocess.check_output(["git", "-C", ROOT, "rev-parse", "--short", "HEAD"],
+                                       text=True, stderr=subprocess.DEVNULL).strip()
     except Exception:
         return "unknown"
 
 
-def load_manifest(path: str, smoke_only: bool, limit: int | None, pair_ids: list[str] | None):
+def load_manifest(path, smoke_only, limit, pair_ids):
     rows = [json.loads(l) for l in open(os.path.join(ROOT, path))]
     if pair_ids:
-        rows = [r for r in rows if r["pair_id"] in set(pair_ids)]
+        rows = [r for r in rows if r["pair_id"] in pair_ids]
     if smoke_only:
         rows = [r for r in rows if r.get("smoke_subset")]
     if limit:
@@ -52,18 +48,19 @@ def main():
     ap.add_argument("--run-name", required=True)
     ap.add_argument("--conditions", default="regular,vcd")
     ap.add_argument("--variants", default="canonical,counterfactual")
-    ap.add_argument("--seeds", default=None, help="comma list; overrides config")
-    ap.add_argument("--smoke-only", action="store_true", help="only pairs with smoke_subset=true")
+    ap.add_argument("--seeds", default=None, help="comma separated, overrides the config")
+    ap.add_argument("--smoke-only", action="store_true")
     ap.add_argument("--limit-pairs", type=int, default=None)
-    ap.add_argument("--pair-ids", default=None, help="comma list of pair_ids")
-    ap.add_argument("--diagnostics", action="store_true", help="also store first-step clean/noised/VCD diagnostics")
+    ap.add_argument("--pair-ids", default=None, help="comma separated")
+    ap.add_argument("--diagnostics", action="store_true", help="also store first-step clean/noisy logit info for vcd")
     args = ap.parse_args()
 
     cfg = yaml.safe_load(open(os.path.join(ROOT, args.config)))
     conditions = args.conditions.split(",")
     variants = args.variants.split(",")
     seeds = [int(s) for s in args.seeds.split(",")] if args.seeds else list(cfg["seeds"])
-    pairs = load_manifest(cfg["manifest"], args.smoke_only, args.limit_pairs, args.pair_ids.split(",") if args.pair_ids else None)
+    pair_ids = set(args.pair_ids.split(",")) if args.pair_ids else None
+    pairs = load_manifest(cfg["manifest"], args.smoke_only, args.limit_pairs, pair_ids)
 
     out_dir = os.path.join(ROOT, "outputs", args.run_name)
     os.makedirs(out_dir, exist_ok=True)
@@ -76,7 +73,7 @@ def main():
             except Exception:
                 pass
 
-    # The generation config that defines a run (everything that changes the output)
+    # everything that affects the output goes into the config hash
     gen_common = {
         "conv_mode": cfg["conv_mode"], "max_new_tokens": cfg["max_new_tokens"],
         "image_aspect_ratio": "pad", "sampling": cfg["sampling"], "vcd": cfg["vcd"],
@@ -93,30 +90,31 @@ def main():
     ps = patch_status()
     print("patch status:", ps, flush=True)
     if "vcd" in conditions and not ps["sample_is_vcd"]:
-        raise SystemExit("VCD monkeypatch not attached; refusing to run vcd condition")
+        sys.exit("VCD patch not attached, not running the vcd condition")
     runner = LlavaRunner(resolve_snapshot(cfg["model_path"], cfg["model_revision"]), conv_mode=cfg["conv_mode"])
     gpu_name = torch.cuda.get_device_name(0)
     sha = git_sha()
 
-    todo = [(p, v, c, s) for p in pairs for v in variants for c in conditions for s in (seeds if c != "greedy" else [0])]
-    print(f"{len(todo)} generations planned ({len(pairs)} pairs x {variants} x {conditions} x seeds={seeds}); {len(done)} already done", flush=True)
+    todo = [(p, v, c, s) for p in pairs for v in variants for c in conditions
+            for s in (seeds if c != "greedy" else [0])]
+    print("%d generations planned (%d pairs x %s x %s x seeds=%s), %d already done"
+          % (len(todo), len(pairs), variants, conditions, seeds, len(done)), flush=True)
 
     fout = open(out_path, "a")
     n_run = 0
     t_start = time.time()
     for p, variant, cond, seed in todo:
-        run_id = hashlib.sha1(f"{p['pair_id']}|{variant}|{cond}|{seed}|{config_hash}".encode()).hexdigest()[:16]
+        run_id = hashlib.sha1(("%s|%s|%s|%s|%s" % (p["pair_id"], variant, cond, seed, config_hash)).encode()).hexdigest()[:16]
         if run_id in done:
             continue
-        img_path = os.path.join(ROOT, p[f"{variant}_path"])
-        gt = p[f"{variant}_gt"]
-        eb = p[f"{variant}_expected_bias"]
-        image = Image.open(img_path)
+        gt = p[variant + "_gt"]
+        eb = p[variant + "_expected_bias"]
+        image = Image.open(os.path.join(ROOT, p[variant + "_path"]))
         started = datetime.now(timezone.utc).isoformat()
-        # Per-item seed derived from (run seed, pair, variant). Re-seeding with the *same* value before
-        # every generation would make torch.multinomial draw the same quantile for every image, which
-        # with a near-binary Yes/No distribution collapses "3 seeds" into 3 fixed thresholds.
-        item_seed = (seed * 1_000_003 + zlib.crc32(f"{p['pair_id']}|{variant}".encode())) % (2 ** 31)
+        # seed per image, derived from the run seed. Calling set_seed(seed) with the same value
+        # before every image made torch.multinomial draw the same random number every time, so
+        # with a 2-token Yes/No distribution one "seed" answered Yes to every single image.
+        item_seed = (seed * 1_000_003 + zlib.crc32((p["pair_id"] + "|" + variant).encode())) % (2 ** 31)
         res = runner.generate_once(
             p["prompt"], image, cond, item_seed, max_new_tokens=cfg["max_new_tokens"],
             temperature=cfg["sampling"]["temperature"], top_p=cfg["sampling"]["top_p"], top_k=cfg["sampling"]["top_k"],
@@ -127,11 +125,12 @@ def main():
             "run_id": run_id, "pair_id": p["pair_id"], "image_variant": variant, "domain": p["domain"],
             "sub_domain": p["sub_domain"], "template_id": p["template_id"],
             "model_revision": cfg["model_revision"], "dataset_revision": cfg["dataset_revision"],
-            "image_path": p[f"{variant}_path"], "prompt": res["prompt"], "question": p["prompt"],
+            "image_path": p[variant + "_path"], "prompt": res["prompt"], "question": p["prompt"],
             "raw_output": res["raw_output"], "parsed_answer": parsed.parsed_answer, "parse_status": parsed.parse_status,
             "parse_method": parsed.method,
             "ground_truth": gt, "expected_bias": eb, "is_correct": is_correct, "is_bias_answer": is_bias,
-            "condition": cond, "seed": seed, "item_seed": item_seed, "generation_config": gen_common, "config_hash": config_hash,
+            "condition": cond, "seed": seed, "item_seed": item_seed, "generation_config": gen_common,
+            "config_hash": config_hash,
             "n_new_tokens": res["n_new_tokens"], "hit_max_new_tokens": res["hit_max_new_tokens"],
             "n_cd_forward_calls": res["n_cd_forward_calls"], "first_step_topk": res["first_step_topk"],
             "first_step_n_unmasked": res["first_step_n_unmasked"],
@@ -140,15 +139,18 @@ def main():
         }
         if args.diagnostics and cond == "vcd":
             rec["diagnostics"] = runner.first_step_diagnostics(
-                p["prompt"], image, seed, cfg["vcd"]["cd_alpha"], cfg["vcd"]["cd_beta"], cfg["vcd"]["noise_step"])
+                p["prompt"], image, item_seed, cfg["vcd"]["cd_alpha"], cfg["vcd"]["cd_beta"], cfg["vcd"]["noise_step"])
         fout.write(json.dumps(rec, ensure_ascii=False) + "\n")
         fout.flush()
         n_run += 1
-        print(f"[{n_run}/{len(todo) - len(done)}] {p['pair_id']:38s} {variant:14s} {cond:8s} seed={seed:<3d} "
-              f"{res['duration_ms']:7.0f}ms cd_calls={res['n_cd_forward_calls']:<3d} gt={gt:<3s} -> {res['raw_output']!r} "
-              f"[{parsed.parse_status}{'' if is_correct is None else (' correct' if is_correct else ' WRONG')}]", flush=True)
+        status = parsed.parse_status
+        if is_correct is not None:
+            status += " correct" if is_correct else " WRONG"
+        print("[%d/%d] %-38s %-14s %-8s seed=%-3d %6.0fms cd_calls=%-3d gt=%-3s -> %r [%s]"
+              % (n_run, len(todo) - len(done), p["pair_id"], variant, cond, seed, res["duration_ms"],
+                 res["n_cd_forward_calls"], gt, res["raw_output"], status), flush=True)
     fout.close()
-    print(f"done: {n_run} new records in {time.time() - t_start:.1f}s -> {out_path}")
+    print("done: %d new records in %.1fs -> %s" % (n_run, time.time() - t_start, out_path))
 
 
 if __name__ == "__main__":
