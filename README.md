@@ -60,29 +60,7 @@ during each generation and raise if a vcd run has zero calls, and (3) for a few 
 clean and noisy logits by hand to see that the contrastive term is nonzero. Every record stores the
 call count. On the smoke run every vcd generation had 2 calls (one per token) and took twice as long.
 
-## Things that went wrong / decisions
 
-- The machine's python is 3.13, transformers 4.31.0 won't install there. Separate 3.10 env.
-- `vcd_sample.py` has a NameError (`SampleDecoderOnlyOutput` never imported) that only shows up if you
-  ask for scores. I patch the name in from my side instead of editing their code.
-- LLaVA's config says pad images to square; VCD's eval script center-crops instead. I pad, because the
-  Ebbinghaus images are ~1.5:1 and a center crop chops the outer circles off.
-- First smoke run had a seeding bug: I reset the seed before every image, so `multinomial` drew the same
-  random number every time, and with only Yes/No left after APC two of the three "seeds" said Yes to all
-  44 images. Now each image gets a seed derived from (run seed, pair id, variant). The bad run is kept
-  under `outputs/*_SUPERSEDED_perrun_reseed/` so I remember.
-- Because regular and vcd share the image seed and the noise is drawn on the CPU generator while the
-  token draw is on the GPU generator, both conditions see the same random threshold. That's actually
-  nice for a paired comparison (it isolates the change in the distribution), and it's why 65 of 66
-  answers were identical: VCD moves the Yes/No probability by ~0.05-0.13 here.
-- Ebbinghaus pair images differ in width by a few pixels (pyllusion sizes the canvas from content).
-  Flagged in the manifest, still need to eyeball all 60 pairs.
-- Ponzo strength=18 has counterfactuals but no difference=0 image, so those are dropped.
-- The prompts in the released dataset differ from the generator code on GitHub ("two red circles" vs
-  "two inner circles"). I go by the dataset.
-- EnAR doesn't say what VCD hyperparameters it used, and its code release leaves out the LLaVA/VCD
-  part. Also their 16.92/19.18 numbers are over 928 rows (one resolution, both prompts), not the full
-  2784. Details in docs/enar_reproduction_notes.md.
 
 ## Layout
 
