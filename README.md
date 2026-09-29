@@ -14,7 +14,11 @@ minimally changed counterfactual (familiar answer is wrong), same prompt, same r
 sees better should get both right more often. A decoder that just avoids the familiar answer will gain
 on the counterfactual and lose on the canonical.
 
-The full plan is in SPEC.md, the schedule in TIMELINE.md, and every pinned version in VERSIONS.md.
+If VCD is a pure perceptual enhancer, the joint probability \(P(\text{Correct}_{\text{Counterfactual}} \cap \text{Correct}_{\text{Canonical}})\) should rise. In reality, based on how contrastive decoding methods behave on heavily biased distributions, your audit will likely reveal a Trade-Off Profile (The Contrarian Effect): A net loss on the canonical dataset. Because the VLMBias benchmark consists entirely of counterfactuals where the familiar answer is 100% wrong, any decoding method that shifts the model away from its high-probability text priors will look artificially hyper-effective. An increase in overall token entropy. You will likely find that VCD reduces the model's confidence on the canonical images, occasionally pushing a perfectly correct "4" into an incorrect "3" or "5" because it penalized the text prior too aggressively. 
+
+
+
+
 
 ## Where things are (Sept 12)
 
