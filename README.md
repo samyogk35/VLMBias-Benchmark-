@@ -20,7 +20,7 @@ If VCD is a pure perceptual enhancer, the joint probability \(P(\text{Correct}_{
 
 
 
-## Where things are (Sept 12)
+## Where things are 
 
 Environment works (python 3.10, torch 2.0.1, transformers 4.31.0 - the versions VCD's code needs).
 Model, CLIP tower and dataset are downloaded at fixed revisions. I built an inventory of the VLMBias
