@@ -1,26 +1,38 @@
+# --- personal planning notes (not part of the public benchmark) ---
+SPEC.md
+TIMELINE.md
+NOTES.md
+notes/
+*.draft.md
+
 # --- model weights, datasets, caches (never commit) ---
 checkpoints/
 weights/
 *.bin
-*.safetensors
+*.pt
 *.pth
 *.ckpt
+*.safetensors
 data/raw/
 data/images/
 data/hf/
+data/cache/
+hf_cache/
+.cache/
 *.parquet
 *.arrow
 
-# --- experiment outputs (raw JSONL + tables are regenerated; keep only tracked summaries in figures/) ---
+# --- experiment outputs (raw JSONL + logs are regenerated; keep only tracked summaries in figures/) ---
 outputs/*
 !outputs/.gitkeep
 !outputs/README.md
 *.jsonl
 !data/manifests/*.jsonl
+*.log
 logs/
 wandb/
 
-# --- third-party clones are recorded by SHA in VERSIONS.md, not vendored ---
+# --- third-party clones are recorded by SHA, not vendored (scripts/clone_third_party.sh) ---
 third_party/*
 !third_party/.gitkeep
 
@@ -29,13 +41,25 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
 .venv/
 venv/
 env/
-.ipynb_checkpoints/
+.conda/
+.env
+.env.*
 
 # --- editor / OS ---
 .vscode/
 .idea/
 .DS_Store
 *.swp
+*.swo
+.claude/settings.local.json
+
+# --- step-1 run notes and summaries (kept local, not committed) ---
+docs/runpod_run_notes.md
+figures/vlmbias_main_px768.md
+figures/vlmbias_pilot_px768.md

@@ -8,7 +8,6 @@ import argparse
 import hashlib
 import json
 import os
-import platform
 import subprocess
 import sys
 import time
@@ -46,6 +45,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", required=True)
     ap.add_argument("--run-name", required=True)
+    ap.add_argument("--manifest", default=None, help="overrides the config's manifest")
     ap.add_argument("--conditions", default="regular,vcd")
     ap.add_argument("--variants", default="canonical,counterfactual")
     ap.add_argument("--seeds", default=None, help="comma separated, overrides the config")
@@ -60,6 +60,8 @@ def main():
     variants = args.variants.split(",")
     seeds = [int(s) for s in args.seeds.split(",")] if args.seeds else list(cfg["seeds"])
     pair_ids = set(args.pair_ids.split(",")) if args.pair_ids else None
+    if args.manifest:
+        cfg["manifest"] = args.manifest
     pairs = load_manifest(cfg["manifest"], args.smoke_only, args.limit_pairs, pair_ids)
 
     out_dir = os.path.join(ROOT, "outputs", args.run_name)
@@ -85,14 +87,12 @@ def main():
               open(os.path.join(out_dir, "run_config.json"), "w"), indent=1)
 
     from src.eval.vcd_adapter import LlavaRunner, install_patch, patch_status, resolve_snapshot
-    import torch
     install_patch()
     ps = patch_status()
     print("patch status:", ps, flush=True)
     if "vcd" in conditions and not ps["sample_is_vcd"]:
         sys.exit("VCD patch not attached, not running the vcd condition")
     runner = LlavaRunner(resolve_snapshot(cfg["model_path"], cfg["model_revision"]), conv_mode=cfg["conv_mode"])
-    gpu_name = torch.cuda.get_device_name(0)
     sha = git_sha()
 
     todo = [(p, v, c, s) for p in pairs for v in variants for c in conditions
@@ -124,6 +124,7 @@ def main():
         rec = {
             "run_id": run_id, "pair_id": p["pair_id"], "image_variant": variant, "domain": p["domain"],
             "sub_domain": p["sub_domain"], "template_id": p["template_id"],
+            "question_form": p.get("question_form"), "resolution": p.get("resolution"),
             "model_revision": cfg["model_revision"], "dataset_revision": cfg["dataset_revision"],
             "image_path": p[variant + "_path"], "prompt": res["prompt"], "question": p["prompt"],
             "raw_output": res["raw_output"], "parsed_answer": parsed.parsed_answer, "parse_status": parsed.parse_status,
@@ -134,7 +135,7 @@ def main():
             "n_new_tokens": res["n_new_tokens"], "hit_max_new_tokens": res["hit_max_new_tokens"],
             "n_cd_forward_calls": res["n_cd_forward_calls"], "first_step_topk": res["first_step_topk"],
             "first_step_n_unmasked": res["first_step_n_unmasked"],
-            "git_sha": sha, "gpu_name": gpu_name, "hostname": platform.node(),
+            "git_sha": sha,
             "started_at": started, "duration_ms": round(res["duration_ms"], 1),
         }
         if args.diagnostics and cond == "vcd":

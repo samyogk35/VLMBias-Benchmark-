@@ -18,6 +18,9 @@ NUMBER_WORDS = {
 # integers, but not the parts of a decimal like 3.5 (a trailing period like "5." is fine)
 INT = r"(?<!\d)(?<!\d\.)(\d+)(?!\d|\.\d)"
 NUMBER = re.compile(INT + r"|\b(" + "|".join(NUMBER_WORDS) + r")\b", re.I)
+# grid-cell labels like C3, h8, b12 name a place, not a count, so their digits are not answers.
+# "row 3" (with a space) is still a real number and still counts.
+CELL_LABEL = re.compile(r"\b[A-Za-z]\d{1,2}\b")
 
 
 @dataclass
@@ -47,8 +50,11 @@ def yes_no_candidates(text):
 
 
 def number_candidates(text):
+    labels = [m.span() for m in CELL_LABEL.finditer(text)]
     found = []
     for m in NUMBER.finditer(text):
+        if any(s <= m.start() and m.end() <= e for s, e in labels):
+            continue
         if m.group(1) is not None:
             found.append(str(int(m.group(1))))
         else:

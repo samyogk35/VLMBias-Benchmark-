@@ -52,6 +52,25 @@ def test_number(raw, expected, status):
     assert (r.parsed_answer, r.parse_status) == (expected, status)
 
 
+# grid-cell labels (C3, A1, b12) are positions, not counts
+@pytest.mark.parametrize("raw,expected,status", [
+    ("There are 10 circles in cell C3.", "10", "valid"),
+    ("The count in A1 is {4}.", "4", "valid"),
+    ("H8 has 2 stars.", "2", "valid"),
+    ("cell b12 contains 7 dots", "7", "valid"),
+    ("{5}", "5", "valid"),
+    ("D4 has two lines.", "2", "valid"),
+    ("In cell F6, there are 16 circles visible in the picture.", "16", "valid"),
+    # a row index is a real number, so this stays ambiguous
+    ("There are 4 shapes in row 3.", None, "ambiguous"),
+    ("There are 10 circles in cell C3, not 12.", None, "ambiguous"),
+    ("{C3}", None, "invalid"),
+])
+def test_number_cell_labels(raw, expected, status):
+    r = parse_answer(raw, "number")
+    assert (r.parsed_answer, r.parse_status) == (expected, status)
+
+
 def test_score():
     r = parse_answer("{No}", "yes_no")
     assert score(r, "No", "Yes") == (True, False)

@@ -1,8 +1,10 @@
 # torch/transformers versions are what VCD needs (their requirements.txt). cu118 because
 # there is no cu121 wheel for torch 2.0.1.
 --extra-index-url https://download.pytorch.org/whl/cu118
-torch==2.0.1+cu118
-torchvision==0.15.2+cu118
+torch==2.0.1+cu118; sys_platform == "linux"
+torchvision==0.15.2+cu118; sys_platform == "linux"
+torch==2.0.1; sys_platform == "darwin"
+torchvision==0.15.2; sys_platform == "darwin"
 transformers==4.31.0
 tokenizers>=0.12.1,<0.14
 sentencepiece==0.1.99
@@ -23,4 +25,5 @@ tabulate
 pyyaml
 tqdm
 scipy
+matplotlib          # figures only (src/analysis/make_figures.py), not needed for inference
 pytest

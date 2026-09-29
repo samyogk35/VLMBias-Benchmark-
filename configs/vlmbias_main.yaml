@@ -1,0 +1,21 @@
+# reproduction config: regular sampling vs VCD on the raw VLMBias main split, one resolution
+# (EnAR Table 1 is 928 rows = one resolution x {Q1, Q2}; which resolution isn't published, so
+# build the px384 / px1152 manifests too and pass --manifest to try the others)
+model_path: liuhaotian/llava-v1.5-7b
+model_revision: 4481d270cc22fd5c4d1bb5df129622006ccd9234
+dataset_revision: 3761f9fd7163577534a7816c8bc1004035f2e2a0
+conv_mode: llava_v1
+manifest: data/manifests/vlmbias_main_px768_v0.1.jsonl
+max_new_tokens: 16
+# same sampling settings as VCD's llava eval script (temperature 1, no top-p, no top-k)
+sampling:
+  temperature: 1.0
+  top_p: 1.0
+  top_k: null
+# VCD's own run script uses alpha=1 beta=0.2 noise_step=500, the code defaults are 0.5/0.1.
+# EnAR doesn't say which they used, going with the run script.
+vcd:
+  cd_alpha: 1.0
+  cd_beta: 0.2
+  noise_step: 500
+seeds: [42]
