@@ -114,3 +114,16 @@ are reported.
   the star points from every edited go board).
 - Leave out one illusion type or board type at a time.
 - Alternative parsing: score ambiguous answers by their first Yes/No or first number.
+
+
+Addendum (2026-10-27, before any board or ablation result was seen)
+-------------------------------------------------------------------
+The A5000 used for the MVP was out of stock, so the full run uses an RTX A40. Before the run I
+re-generated 360 MVP records on the A40 (all greedy, regular and VCD at seed 42): 359 matched
+exactly and 1 differed (opt_Zollner_str75_diff2, edited image, VCD seed 42: "Yes" on the A5000,
+"No" on the A40; the first-step scores for No/Yes were 23.44/23.41 vs 23.44/23.39, an fp16
+rounding difference on a near-tie). Section 4 said the MVP records would be reused. To keep every
+comparison inside one GPU, all 2080 records are instead generated on the A40, and the full
+analysis uses only those. The MVP (A5000) results stay as reported; the A40 illusion records
+under greedy, regular and VCD serve as their replication. Everything else in this plan is
+unchanged.
