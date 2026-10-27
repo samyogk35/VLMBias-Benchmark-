@@ -60,3 +60,50 @@ def cluster_bootstrap_diff(a, b, cluster_key, n=10_000, seed=0):
     lo, hi = np.percentile(boot, [2.5, 97.5])
     return {"estimate": float((b - a).mean()), "ci_low": float(lo), "ci_high": float(hi),
             "n_rows": int(len(a)), "n_clusters": int(n_clusters)}
+
+
+def cluster_signflip_test(a, b, cluster_key, n=10_000, seed=0, exact_max_clusters=16):
+    """Two-sided p-value for mean(b) - mean(a) = 0, flipping the a/b labels per cluster.
+
+    Under the null the two conditions are exchangeable within each cluster, so each
+    cluster's summed difference is equally likely to have either sign. All 2^k sign
+    patterns are enumerated when k <= exact_max_clusters, otherwise n random patterns
+    are drawn and the p-value is (hits + 1) / (n + 1).
+    """
+    a = np.asarray(a, dtype=float)
+    b = np.asarray(b, dtype=float)
+    keys = np.asarray(cluster_key)
+    if not (a.shape == b.shape == keys.shape):
+        raise ValueError("a, b and cluster_key must have the same length")
+
+    _, idx = np.unique(keys, return_inverse=True)
+    k = idx.max() + 1
+    diff_sum = np.bincount(idx, weights=b - a, minlength=k)
+    observed = diff_sum.sum() / len(a)
+    tol = 1e-12
+
+    if k <= exact_max_clusters:
+        signs = 1 - 2 * ((np.arange(2 ** k)[:, None] >> np.arange(k)) & 1)
+        stats = signs @ diff_sum / len(a)
+        p = float((np.abs(stats) >= abs(observed) - tol).mean())
+        method = "exact"
+    else:
+        rng = np.random.default_rng(seed)
+        signs = rng.choice([-1.0, 1.0], size=(n, k))
+        stats = signs @ diff_sum / len(a)
+        p = float(((np.abs(stats) >= abs(observed) - tol).sum() + 1) / (n + 1))
+        method = "monte_carlo"
+    return {"estimate": float(observed), "p_value": p, "n_clusters": int(k), "method": method}
+
+
+def holm(pvalues):
+    """Holm step-down adjusted p-values, same order as the input."""
+    p = np.asarray(pvalues, dtype=float)
+    order = np.argsort(p)
+    m = len(p)
+    adj = np.empty(m)
+    running = 0.0
+    for rank, i in enumerate(order):
+        running = max(running, (m - rank) * p[i])
+        adj[i] = min(1.0, running)
+    return adj.tolist()

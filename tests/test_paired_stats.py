@@ -1,5 +1,7 @@
 import pytest
-from src.analysis.paired_stats import cluster_bootstrap_diff, mcnemar_exact, transition_table
+import numpy as np
+from src.analysis.paired_stats import (cluster_bootstrap_diff, cluster_signflip_test, holm, mcnemar_exact,
+                                      transition_table)
 
 # 6 rows in 3 clusters of 2. By hand:
 #   row  a  b   kind
@@ -65,3 +67,32 @@ def test_bootstrap_resamples_clusters_not_rows():
     # 0.75, but a cluster resample can only give 0, 0.5 or 1.
     r = cluster_bootstrap_diff([0, 0, 0, 0], [1, 1, 0, 0], ["p", "p", "q", "q"], n=2000, seed=0)
     assert r["ci_low"] in (0.0, 0.5, 1.0) and r["ci_high"] in (0.0, 0.5, 1.0)
+
+
+def test_signflip_exact_by_hand():
+    # cluster sums of b - a: x=+2, y=-1, z=+1 over 6 rows, observed mean 2/6.
+    # 8 sign patterns give |sum| in {4, 2, 0, 2, 2, 0, 2, 4}; |sum| >= 2 in 6 of 8.
+    r = cluster_signflip_test(A, B, KEYS)
+    assert r["method"] == "exact"
+    assert r["estimate"] == pytest.approx(2 / 6)
+    assert r["p_value"] == pytest.approx(6 / 8)
+
+
+def test_signflip_no_difference():
+    r = cluster_signflip_test([1, 0, 1, 0], [1, 0, 1, 0], ["p", "p", "q", "q"])
+    assert (r["estimate"], r["p_value"]) == (0.0, 1.0)
+
+
+def test_signflip_monte_carlo_close_to_exact():
+    rng = np.random.default_rng(3)
+    a = rng.integers(0, 2, 40)
+    b = rng.integers(0, 2, 40)
+    keys = np.repeat(np.arange(10), 4)
+    exact = cluster_signflip_test(a, b, keys)["p_value"]
+    mc = cluster_signflip_test(a, b, keys, n=20_000, seed=0, exact_max_clusters=0)["p_value"]
+    assert mc == pytest.approx(exact, abs=0.02)
+
+
+def test_holm():
+    # sorted 0.01, 0.02, 0.04 -> 0.03, 0.04, 0.04 (monotone), mapped back to input order
+    assert holm([0.04, 0.01, 0.02]) == pytest.approx([0.04, 0.03, 0.04])

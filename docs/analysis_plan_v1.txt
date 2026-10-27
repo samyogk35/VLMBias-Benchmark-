@@ -1,0 +1,148 @@
+ANALYSIS PLAN v1 - Paired audit of VCD on optical-illusion pairs
+=================================================================
+
+Written: 2026-10-27, before any paired-run results exist. The commit that adds
+this file fixes its date. Nothing below is changed after results are seen; any
+later change goes in a new version with the reason stated.
+
+
+1. Question
+-----------
+When VCD changes LLaVA-1.5-7B's answers on edited illusion images, does it also
+keep the normal images right? Or does it just move answers away from the
+familiar one, which raises edited-image accuracy and lowers normal-image
+accuracy at the same time?
+
+
+2. Data
+-------
+- Manifest: data/manifests/optical_pairs_v1.0.jsonl (frozen in commit 819ee11).
+- 60 pairs, 6 illusion types (Ebbinghaus 12, Muller-Lyer 12, Poggendorff 12,
+  Zollner 12, Ponzo 6, Vertical-Horizontal 6). All 60 passed hand review.
+- Every pair uses the Q1 prompt at 768 px. Correct answer: Yes on the normal
+  image, No on the edited image.
+- The 60 pairs come from 22 templates. Each template is one normal image shared
+  by 2 or 3 pairs that differ only in how large the edit is. The 22 templates,
+  not the 60 pairs, are the independent units in every test below.
+- No pair is added to or removed from the main analysis after this point.
+
+
+3. Run
+------
+- Model liuhaotian/llava-v1.5-7b at the revision in configs/paired_mvp.yaml.
+- Conditions in this run:
+    greedy            one run per image
+    regular sampling  seeds 42, 43, 44 (temperature 1, top_p 1, no top_k)
+    full VCD          seeds 42, 43, 44 (alpha 1, beta 0.2, 500 noise steps)
+  Each image gets its own seed derived from the run seed, pair_id and image.
+- APC-only and contrast-only are added in a later run on the same pairs and
+  seeds. They feed the "decoding artifact" reading in section 6 and do not
+  change the main test.
+- The run counts only if all of these hold:
+    * 840 records (60 pairs x 2 images x 7 runs), run_ids unique;
+    * every VCD record shows at least one noisy-image pass, and no greedy or
+      regular record shows any;
+    * the record count still matches after copying results off the pod.
+
+
+4. Scoring
+----------
+- Answers go through the existing parser. parse_status is valid, ambiguous or
+  invalid. Ambiguous and invalid count as wrong when computing pair success,
+  and their rate is reported for each condition.
+- Pair success for a pair, condition and seed: both images answered correctly.
+- Pair-level score per condition: mean pair success over the 3 seeds
+  (0, 1/3, 2/3 or 1). Greedy has one run, so its score is 0 or 1.
+
+
+5. Tests
+--------
+Main test (the only one that decides the result; no correction needed):
+- Difference D = mean pair score under VCD minus mean pair score under regular
+  sampling, over the 60 pairs.
+- 95% interval: cluster bootstrap over the 22 templates, 10,000 draws, seed 0
+  (cluster_bootstrap_diff).
+- p-value: two-sided sign-flip test at template level, 10,000 draws, seed 0
+  (cluster_signflip_test).
+
+Secondary tests (one family, Holm-corrected):
+- Normal-image accuracy, VCD minus regular.
+- Edited-image accuracy, VCD minus regular.
+- Pair score, VCD minus greedy.
+Each uses the same bootstrap interval and sign-flip test as the main test.
+
+Reported without tests:
+- Transition counts on matched pair and seed, regular vs VCD: edited image
+  fixed or broken, normal image fixed or broken, pair gained or lost, and
+  "trade-off only" (edited image fixed while normal image broken in the same
+  pair and seed).
+- Exact McNemar on each seed separately, for normal and edited images.
+- Results by illusion type and by edit size.
+
+Sample size: with 22 independent templates the intervals will be wide.
+Differences smaller than about 10 percentage points will probably come out
+inconclusive. I report the estimate and interval either way, and I do not read
+an interval that includes zero as "no effect".
+
+
+6. How the result will be read
+------------------------------
+D, dC (normal-image change) and dCF (edited-image change) are all VCD minus
+regular sampling.
+
+Better grounding:
+  D's interval is above zero; trade-off-only cases are fewer than half of the
+  edited-image fixes; and D is positive in at least 4 of the 6 illusion types.
+
+Avoiding the familiar answer:
+  dCF > 0 and dC < 0 while D's interval includes zero or lies below it; or
+  trade-off-only cases make up at least half of the edited-image fixes.
+
+Decoding artifact (decided after the APC-only and contrast-only run):
+  APC-only produces at least half of VCD's change in edited-image accuracy
+  without the noisy-image contrast; or VCD's changed answers mostly match
+  greedy's answers on the same images.
+
+Inconclusive:
+  none of the above fits; or the invalid/ambiguous rate differs by more than
+  5 points between regular and VCD; or D changes sign between seeds.
+
+
+7. Checks against misleading results
+------------------------------------
+- Fixed answers. For each condition, report the share of Yes answers on
+  normal and on edited images. If a condition gives the same answer on 90% or
+  more of all 120 images, its accuracy reflects one fixed answer rather than
+  reading the images, and I say so. Before calling any VCD fix real, I read the
+  raw records behind it.
+- Shared images. Results are described as "60 pairs from 22 templates", never
+  as 60 independent pairs.
+- Robustness (scheduled for 11/17), each reported next to the main result:
+    * drop the 12 Ebbinghaus pairs flagged size_mismatch (their surrounding
+      circles also move);
+    * leave out one illusion type at a time;
+    * alternative parsing: score ambiguous answers by their first Yes/No.
+- Known side changes recorded per pair in the manifest (side_changes field):
+  Ebbinghaus surrounding circles move, Muller-Lyer fins and Zollner hatch
+  marks move with their lines, Vertical-Horizontal figure is re-centered.
+
+
+8. Expected result, stated in advance
+-------------------------------------
+On the full benchmark (midterm), VCD's gain over regular sampling was not
+significant (p = 0.07), and the answers it changed moved toward the familiar
+answer more often than away from it (59 vs 22). Mishra and D'Souza (TMLR 2026)
+locate this kind of failure in what the model sees, before decoding, which a
+decoding method like VCD cannot repair. I therefore expect D near zero, with
+any edited-image gain offset by normal-image losses, which is the "avoiding the
+familiar answer" reading. The run tests this expectation; the reading rules in
+section 6 apply whatever the result is.
+
+
+9. Later additions
+------------------
+Pairs from a second category (game boards or further illusion strengths) get
+their own manifest version and are analyzed separately first. For counting
+categories I also split results by whether the edit adds or removes elements,
+because LLaVA-1.5 is pulled toward the familiar count differently in the two
+directions (Mishra and D'Souza 2026, Table 4).
