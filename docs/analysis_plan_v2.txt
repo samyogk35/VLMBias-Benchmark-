@@ -1,0 +1,116 @@
+ANALYSIS PLAN v2 - Full paired audit: five decoding settings, illusion and game-board pairs
+=========================================================================================
+
+Written: 2026-10-26, before the full run. Replaces analysis_plan_v1.txt for everything not
+yet observed. What has already been seen is stated in section 2 so the reader can tell
+which tests are prospective.
+
+
+1. What changed from v1, and why
+--------------------------------
+a. Two more decoding settings (APC-only, contrast-only), to separate VCD's two parts.
+b. A second category: 20 game-board pairs (chess, sudoku, go), so the result does not rest
+   on one category where LLaVA could not tell the images apart at all.
+c. v1 did not say which reading wins when two apply. Fixed in section 6 (the order is the
+   one the v1 analysis script already used).
+d. A chance baseline for pair success (section 5), because under sampling a model that
+   ignores the image still gets some pairs right by luck.
+e. A minimum amount of evidence before any reading other than "inconclusive" (section 6):
+   the MVP's illusion result rested on 4 changed answers.
+
+
+2. What has already been seen
+-----------------------------
+- Illusion pairs under greedy, regular sampling and full VCD (the MVP, 840 records). The
+  full run reuses these records unchanged (same run_ids, same seeds), so the illusion
+  VCD-vs-regular result is already known: +0.6 points [-1.2, +2.3], 4 changed answers.
+- Not yet seen: any board result, and APC-only / contrast-only on either category.
+Rules c and e were written after seeing the illusion MVP result; for the boards and for
+the two new settings they are prospective.
+
+
+3. Data
+-------
+- Illusions: data/manifests/optical_pairs_v1.0.jsonl, 60 pairs from 22 templates, frozen.
+- Boards: data/manifests/board_pairs_v1.0.jsonl after hand review (built as v0.1 by
+  src/data/build_board_pairs.py). 20 pairs: chess 8, sudoku 8, go 4. Each board type has
+  one standard image; a template is one board type with one question (rows or columns),
+  so 6 templates. 10 edits add a row or column, 10 remove one. Both members of each pair
+  are rendered locally with the VLMBias generator code (the released images come from a
+  different generator version and have no matching standard board).
+- Correct answers: illusions Yes (normal) / No (edited); boards the standard count
+  (normal) / the edited count. For boards the familiar answer is the standard count, so
+  on the normal image the familiar answer is the correct one.
+- The board list is frozen before the run, like the illusion list.
+
+
+4. Run
+------
+- Settings: greedy (one run per image), and regular sampling, APC-only, contrast-only and
+  full VCD at seeds 42, 43, 44. Same model, prompts, temperature 1, alpha 1, beta 0.2,
+  500 noise steps, per-image seeds shared by all sampling settings.
+    APC-only      = official VCD sampler with alpha = 0 (filter, no contrast)
+    contrast-only = official VCD sampler with beta = 0 (contrast, no filter)
+- Records: (60 + 20) pairs x 2 images x 13 runs = 2080; 840 of them are the MVP records.
+- The run counts only if: run_ids unique and complete; every APC-only, contrast-only and
+  VCD record shows noisy-image passes and the expected first-step mask (contrast-only
+  keeps all 32000 tokens, APC-only and VCD keep fewer); no greedy or regular record shows
+  noisy-image passes; image checksums match the frozen manifests; the copied file matches.
+
+
+5. Measures and tests
+---------------------
+Per category first (illusions, boards); pooled results are secondary.
+
+Main tests (one per category, Holm across the two):
+- D = mean pair score under VCD minus under regular sampling (pair score = mean pair
+  success over the 3 seeds). 95% cluster-bootstrap interval and sign-flip p-value over
+  templates (22 for illusions, 6 for boards), 10,000 draws, seed 0.
+- With 6 board templates the sign-flip test is exact (64 sign patterns) and its smallest
+  possible p-value is 1/32; the board interval will be wide. I report it anyway.
+
+Ablation tests (one family per category, Holm-corrected within it):
+- Edited-image accuracy and pair score, APC-only minus regular and contrast-only minus
+  regular.
+
+Secondary (Holm-corrected as one family per category): normal-image accuracy and
+edited-image accuracy, VCD minus regular; pair score, VCD minus greedy.
+
+Chance baseline (reported for every sampling setting):
+- independent-answers pair success = mean over pairs of P(right on normal) x P(right on
+  edited), each estimated from that pair's 3 seeds. Pair success above this means the
+  answers on the two images are linked, i.e. the model treats them differently.
+- For greedy: the share of pairs that got the same answer on both images.
+
+Reported without tests: transition counts (fixed / broken, per image, per setting vs
+regular); share of VCD's changed answers that match greedy's; per board type; adds vs
+removes; for boards, error types on wrong answers (familiar count, off by one, other).
+
+
+6. How the result will be read (per category)
+---------------------------------------------
+Order: the first matching line wins.
+
+1. Inconclusive if: fewer than 10 answers differ between VCD and regular sampling in the
+   category (on matched image and seed); or the invalid/ambiguous rate differs by more
+   than 5 points between them; or D changes sign between seeds.
+2. Decoding artifact if: VCD's edited-image change vs regular is nonzero and APC-only
+   produces at least half of it, with the same sign, while contrast-only produces less
+   than half of it; or at least half of VCD's changed answers equal greedy's answer.
+3. Better grounding if: D's interval is above zero, trade-off-only cases are fewer than
+   half of the edited-image fixes, and the pair score exceeds its chance baseline under
+   VCD by more than under regular sampling.
+4. Avoiding the familiar answer if: edited-image accuracy rises and normal-image accuracy
+   falls under VCD while D's interval includes or lies below zero; or trade-off-only cases
+   are at least half of the edited-image fixes.
+5. Otherwise inconclusive.
+An interval that includes zero is never read as "no effect"; the estimate and its bounds
+are reported.
+
+
+7. Robustness (11/17)
+---------------------
+- Drop the 12 Ebbinghaus size-mismatch pairs; drop the 4 go pairs (the generator removes
+  the star points from every edited go board).
+- Leave out one illusion type or board type at a time.
+- Alternative parsing: score ambiguous answers by their first Yes/No or first number.
