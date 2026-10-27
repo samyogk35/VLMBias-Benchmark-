@@ -2,9 +2,12 @@
 # I don't modify anything under third_party/, everything VCD-specific lives here.
 #
 # conditions:
-#   greedy  - do_sample=False, VCD patch never runs
-#   regular - plain sampling, no noisy image
-#   vcd     - sampling with the noisy image + APC (full VCD)
+#   greedy        - do_sample=False, VCD patch never runs
+#   regular       - plain sampling, no noisy image
+#   apc_only      - VCD sampler with cd_alpha=0: APC mask on the clean logits, no contrast
+#   contrast_only - VCD sampler with cd_beta=0: contrast with the noisy image, no APC mask
+#   vcd           - sampling with the noisy image + APC (full VCD)
+# the ablations are parameters of the official sampler, see src/eval/decoding_conditions.py
 
 import os
 import sys
@@ -30,10 +33,11 @@ from llava.model.builder import load_pretrained_model
 from llava.utils import disable_torch_init
 from llava.mm_utils import tokenizer_image_token, get_model_name_from_path, process_images, KeywordsStoppingCriteria
 
+from src.eval.decoding_conditions import CD_OVERRIDES, CONDITIONS, cd_params, expected_unmasked
+
 MODEL_REPO = "liuhaotian/llava-v1.5-7b"
 MODEL_REVISION = "4481d270cc22fd5c4d1bb5df129622006ccd9234"
 
-CONDITIONS = ("greedy", "regular", "vcd")
 
 
 def resolve_snapshot(repo=MODEL_REPO, revision=MODEL_REVISION):
@@ -100,7 +104,8 @@ class LlavaRunner:
                       temperature=1.0, top_p=1.0, top_k=None,
                       cd_alpha=1.0, cd_beta=0.2, noise_step=500, save_first_step_topk=10):
         assert condition in CONDITIONS, condition
-        if condition == "vcd" and not patch_status()["sample_is_vcd"]:
+        uses_cd = condition in CD_OVERRIDES
+        if uses_cd and not patch_status()["sample_is_vcd"]:
             raise RuntimeError("VCD patch is not installed, call install_patch() first")
 
         prompt, input_ids, image_tensor, stop_str = self.encode(question, pil_image)
@@ -108,7 +113,7 @@ class LlavaRunner:
 
         set_seed(seed)
         images_cd = None
-        if condition == "vcd":
+        if uses_cd:
             images_cd = add_diffusion_noise(image_tensor, noise_step).unsqueeze(0).half().to(self.device)
 
         # count how often the noisy-image branch runs so I can tell if VCD silently did nothing
@@ -129,8 +134,8 @@ class LlavaRunner:
         else:
             # top_k=None matters: transformers defaults to top_k=50 otherwise
             gen_kwargs.update(do_sample=True, temperature=temperature, top_p=top_p, top_k=top_k)
-        if condition == "vcd":
-            gen_kwargs.update(images_cd=images_cd, cd_alpha=cd_alpha, cd_beta=cd_beta)
+        if uses_cd:
+            gen_kwargs.update(images_cd=images_cd, **cd_params(condition, cd_alpha, cd_beta))
 
         torch.cuda.synchronize()
         t0 = time.perf_counter()
@@ -148,9 +153,9 @@ class LlavaRunner:
             text = text[:-len(stop_str)].strip()
         n_new = int(new_ids.shape[1])
 
-        if condition == "vcd" and n_cd_calls == 0:
-            raise RuntimeError("vcd condition but the noisy-image branch never ran")
-        if condition != "vcd" and n_cd_calls != 0:
+        if uses_cd and n_cd_calls == 0:
+            raise RuntimeError("%s condition but the noisy-image branch never ran" % condition)
+        if not uses_cd and n_cd_calls != 0:
             raise RuntimeError("%s condition ran the noisy-image branch %d times" % (condition, n_cd_calls))
 
         # top-k of the first step's scores (for vcd these are the contrastive logits after APC)
@@ -162,6 +167,9 @@ class LlavaRunner:
             vals, idx = torch.topk(torch.where(finite, s0, torch.full_like(s0, -1e30)), k=save_first_step_topk)
             first_topk = [(self.tokenizer.convert_ids_to_tokens(int(i)), float(v)) for v, i in zip(vals, idx)]
             n_alive = int(finite.sum())
+            if not expected_unmasked(condition, n_alive, s0.shape[-1]):
+                raise RuntimeError("%s: %d of %d tokens unmasked at step 1, APC switch not doing what it claims"
+                                   % (condition, n_alive, s0.shape[-1]))
 
         return {
             "prompt": prompt,

@@ -90,8 +90,12 @@ def main():
     install_patch()
     ps = patch_status()
     print("patch status:", ps, flush=True)
-    if "vcd" in conditions and not ps["sample_is_vcd"]:
-        sys.exit("VCD patch not attached, not running the vcd condition")
+    from src.eval.decoding_conditions import CD_OVERRIDES, CONDITIONS, cd_params
+    unknown = [c for c in conditions if c not in CONDITIONS]
+    if unknown:
+        sys.exit("unknown conditions: %s" % unknown)
+    if any(c in CD_OVERRIDES for c in conditions) and not ps["sample_is_vcd"]:
+        sys.exit("VCD patch not attached, not running the noisy-image conditions")
     runner = LlavaRunner(resolve_snapshot(cfg["model_path"], cfg["model_revision"]), conv_mode=cfg["conv_mode"])
     sha = git_sha()
 
@@ -135,6 +139,7 @@ def main():
             "n_new_tokens": res["n_new_tokens"], "hit_max_new_tokens": res["hit_max_new_tokens"],
             "n_cd_forward_calls": res["n_cd_forward_calls"], "first_step_topk": res["first_step_topk"],
             "first_step_n_unmasked": res["first_step_n_unmasked"],
+            "cd_params": cd_params(cond, cfg["vcd"]["cd_alpha"], cfg["vcd"]["cd_beta"]) if cond in CD_OVERRIDES else None,
             "git_sha": sha,
             "started_at": started, "duration_ms": round(res["duration_ms"], 1),
         }
