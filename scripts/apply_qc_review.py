@@ -56,7 +56,8 @@ def main():
             p["qc_status"] = r["verdict"]
             note = r.get("note", "").strip()
             p["qc_notes"] = f"{p['qc_notes']}; hand review {r['at'][:10]}: {r['verdict']}" + (f" ({note})" if note else "")
-            p["side_changes"] = SIDE_CHANGES.get(p["sub_domain"], "")
+            if p["sub_domain"] in SIDE_CHANGES:
+                p["side_changes"] = SIDE_CHANGES[p["sub_domain"]]
             p["size_mismatch"] = p["canonical_size"] != p["counterfactual_size"]
             p["manifest_version"] = args.version
             f.write(json.dumps(p) + "\n")
