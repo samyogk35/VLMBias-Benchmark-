@@ -1,0 +1,86 @@
+{
+  "manifest": "data/manifests/board_pairs_v0.1.jsonl",
+  "reviewed_at": "2026-10-27T04:03:13.698Z",
+  "reviews": {
+    "board_chess_remove_first_row": {
+      "verdict": "pass",
+      "at": "2026-10-27T03:59:43.238Z"
+    },
+    "board_chess_remove_last_row": {
+      "verdict": "pass",
+      "at": "2026-10-27T03:59:45.268Z"
+    },
+    "board_chess_add_first_row": {
+      "verdict": "pass",
+      "at": "2026-10-27T03:59:54.017Z"
+    },
+    "board_chess_add_last_row": {
+      "verdict": "pass",
+      "at": "2026-10-27T04:00:01.384Z"
+    },
+    "board_chess_remove_first_col": {
+      "verdict": "pass",
+      "at": "2026-10-27T04:00:03.001Z"
+    },
+    "board_chess_remove_last_col": {
+      "verdict": "pass",
+      "at": "2026-10-27T04:00:08.300Z"
+    },
+    "board_chess_add_first_col": {
+      "verdict": "pass",
+      "at": "2026-10-27T04:00:11.083Z"
+    },
+    "board_chess_add_last_col": {
+      "verdict": "pass",
+      "at": "2026-10-27T04:00:13.150Z"
+    },
+    "board_sudoku_add_first_row": {
+      "verdict": "pass",
+      "at": "2026-10-27T04:00:15.116Z"
+    },
+    "board_sudoku_add_last_row": {
+      "verdict": "pass",
+      "at": "2026-10-27T04:00:17.066Z"
+    },
+    "board_sudoku_add_first_col": {
+      "verdict": "pass",
+      "at": "2026-10-27T04:00:18.700Z"
+    },
+    "board_sudoku_add_last_col": {
+      "verdict": "pass",
+      "at": "2026-10-27T04:00:20.132Z"
+    },
+    "board_sudoku_remove_first_row": {
+      "verdict": "pass",
+      "at": "2026-10-27T04:00:21.683Z"
+    },
+    "board_sudoku_remove_last_row": {
+      "verdict": "pass",
+      "at": "2026-10-27T04:00:22.866Z"
+    },
+    "board_sudoku_remove_first_col": {
+      "verdict": "pass",
+      "at": "2026-10-27T04:00:24.199Z"
+    },
+    "board_sudoku_remove_last_col": {
+      "verdict": "pass",
+      "at": "2026-10-27T04:00:26.816Z"
+    },
+    "board_go_remove_row_last": {
+      "verdict": "pass",
+      "at": "2026-10-27T04:00:28.699Z"
+    },
+    "board_go_remove_col_last": {
+      "verdict": "pass",
+      "at": "2026-10-27T04:00:30.715Z"
+    },
+    "board_go_add_row_last": {
+      "verdict": "pass",
+      "at": "2026-10-27T04:00:32.115Z"
+    },
+    "board_go_add_col_last": {
+      "verdict": "pass",
+      "at": "2026-10-27T04:00:36.266Z"
+    }
+  }
+}
